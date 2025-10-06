@@ -1,9 +1,7 @@
 package org.todo.todo.controller;
 
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.todo.todo.model.Task;
 import org.todo.todo.service.TaskService;
 
@@ -19,5 +17,10 @@ public class TaskController {
     @GetMapping
     public List<Task> findAllTasks() {
         return service.findAllTasks();
+    }
+
+    @PostMapping("save_task")
+    public Task saveTask(@RequestBody Task task) {
+        return service.saveTask(task);
     }
 }

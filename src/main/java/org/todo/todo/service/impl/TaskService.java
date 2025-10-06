@@ -1,29 +1,30 @@
-/*
 package org.todo.todo.service.impl;
 
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.todo.todo.model.Task;
-import org.todo.todo.service.TaskService;
+import org.todo.todo.repository.TaskRepository;
 
 import java.util.List;
 
 @Service
-public class InMemoryTaskServiceImpl implements TaskService {
+@AllArgsConstructor
+public class TaskService implements org.todo.todo.service.TaskService {
 
-
+    private final TaskRepository taskRepository;
     @Override
     public List<Task> findAllTasks() {
-        return List.of();
+        return taskRepository.findAll();
     }
 
     @Override
     public Task saveTask(Task task) {
-        return null;
+        return taskRepository.save(task);
     }
 
     @Override
     public Task updateTask(Task task) {
-        return null;
+        return taskRepository.save(task);
     }
 
     @Override
@@ -31,4 +32,3 @@ public class InMemoryTaskServiceImpl implements TaskService {
 
     }
 }
-*/

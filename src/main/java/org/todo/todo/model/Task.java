@@ -1,16 +1,17 @@
 package org.todo.todo.model;
 
-import lombok.Builder;
+import jakarta.persistence.*;
 import lombok.Data;
 
-import java.util.Date;
-
 @Data
-@Builder
+@Entity
+@Table(name = "tasks")
 public class Task {
-    //private final long id;
+    @Id
+    @GeneratedValue
+    private long id;
     private String description;
-    private /*Status*/String status;
+    private String status;
     private String title;
-    //private /*LocalDate*/ Date createdOn;
 }
+//private /*LocalDate*/ Date createdOn;
