@@ -1,8 +1,10 @@
 package org.todo.todo.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.todo.todo.model.enums.StatusEnum;
@@ -11,12 +13,14 @@ import java.time.LocalDate;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "tasks")
 public class Task {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     private String description;
@@ -27,7 +31,7 @@ public class Task {
 
     private String title;
 
-    private LocalDate deadline;
+    private LocalDate dueDate;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

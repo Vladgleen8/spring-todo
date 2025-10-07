@@ -19,7 +19,7 @@ public class TaskDto {
         dto.setId(task.getId());
         dto.setTitle(task.getTitle());
         dto.setDescription(task.getDescription());
-        dto.setDueDate(task.getDeadline());
+        dto.setDueDate(task.getDueDate());
         dto.setStatus(task.getStatus());
         return dto;
     }

@@ -17,7 +17,7 @@ public class CreateTaskDto {
         CreateTaskDto dto = new CreateTaskDto();
         dto.setTitle(task.getTitle());
         dto.setDescription(task.getDescription());
-        dto.setDueDate(task.getDeadline());
+        dto.setDueDate(task.getDueDate());
         dto.setStatus(task.getStatus());
         return dto;
     }

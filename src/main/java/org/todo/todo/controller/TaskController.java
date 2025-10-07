@@ -17,19 +17,14 @@ public class TaskController {
     private TaskService service;
 
     @GetMapping
-    public List<TaskDto> getAllTasks() {
-        return service.getAllTasks();
+    public List<TaskDto> getTasks(@RequestParam(required = false, defaultValue = "dueDate") String sortBy,
+                                        @RequestParam(required = false ) StatusEnum status) {
+        return service.getTasks(sortBy, status);
     }
 
     @GetMapping("/status/{status}")
     public List<TaskDto> getTasksByStatus(@PathVariable StatusEnum status) {
         return service.getTasksByStatus(status);
-    }
-
-    @GetMapping
-    public List<TaskDto> getSortedTasks(@RequestParam(required = false, defaultValue = "deadline") String sortBy,
-                                        @RequestParam(required = false ) StatusEnum status) {
-        return service.getSortedTasks(sortBy, status);
     }
 
     @GetMapping("/{id}")
@@ -39,10 +34,18 @@ public class TaskController {
 
     @PostMapping("create_task")
     public TaskDto createTask(@RequestBody CreateTaskDto taskDto) {
-        return service.saveTask(taskDto);
+        return service.createTask(taskDto);
     }
 
+    @PutMapping
+    public TaskDto updateTask(@RequestBody TaskDto taskDto) {
+        return service.updateTask(taskDto);
+    }
 
+    @DeleteMapping("/{id}")
+    public void deleteTask(@PathVariable Long id) {
+        service.deleteTask(id);
+    }
 
 
 }

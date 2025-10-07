@@ -9,7 +9,6 @@ import org.todo.todo.model.Task;
 import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.repository.TaskRepository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,18 +17,31 @@ import java.util.stream.Collectors;
 public class TaskService implements org.todo.todo.service.TaskService {
 
     private final TaskRepository taskRepository;
-    @Override
-    public List<TaskDto> getAllTasks() {
-        List<Task> foundTasks = taskRepository.findAll();
-        return foundTasks.stream().map(TaskDto::fromEntity).collect(Collectors.toList());
-    }
 
     @Override
-    public TaskDto saveTask(CreateTaskDto taskDto) {
+    public List<TaskDto> getTasks(String sortBy, StatusEnum status) {
+        Sort sort = Sort.by(sortBy != null ? sortBy : "dueDate");
+
+        List<Task> tasks;
+
+        if (status != null) {
+            tasks = taskRepository.findByStatus(status, sort);
+        } else {
+            tasks = taskRepository.findAll(sort);
+        }
+
+        return tasks.stream()
+                .map(TaskDto::fromEntity)
+                .toList();
+    }
+
+
+    @Override
+    public TaskDto createTask(CreateTaskDto taskDto) {
         Task task = Task.builder()
                 .title(taskDto.getTitle())
                 .description(taskDto.getDescription())
-                .deadline(taskDto.getDueDate())
+                .dueDate(taskDto.getDueDate())
                 .status(taskDto.getStatus() != null ? taskDto.getStatus() : StatusEnum.TO_DO)
                 .build();
 
@@ -38,22 +50,23 @@ public class TaskService implements org.todo.todo.service.TaskService {
     }
 
     @Override
-    public Task updateTask(Task task) {
-        return taskRepository.save(task);
+    public TaskDto updateTask(TaskDto taskDto) {
+
+        Task task = Task.builder()
+                .id(taskDto.getId())
+                .title(taskDto.getTitle())
+                .description(taskDto.getDescription())
+                .dueDate(taskDto.getDueDate())
+                .status(taskDto.getStatus())
+                .build();
+
+        Task updatedTask = taskRepository.save(task);
+        return  TaskDto.fromEntity(updatedTask);
     }
 
     @Override
-    public void deleteTask(Task task) {
-        taskRepository.delete(task);
-    }
-
-    @Override
-    public List<TaskDto> getSortedTasks(String sortBy, StatusEnum status) {
-        Sort sort = Sort.by(sortBy); // по умолчанию ASC, можно добавить Sort.by(Sort.Direction.DESC, sortBy)
-        return taskRepository.findByStatus(status, sort)
-                .stream()
-                .map(TaskDto::fromEntity)
-                .collect(Collectors.toList());
+    public void deleteTask(Long id) {
+        taskRepository.deleteById(id);
     }
 
     @Override
