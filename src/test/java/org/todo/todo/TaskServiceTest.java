@@ -15,9 +15,9 @@ import org.todo.todo.repository.TaskRepository;
 import org.todo.todo.service.impl.TaskService;
 
 import java.time.LocalDate;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,20 +29,20 @@ class TaskServiceTest {
     @InjectMocks
     private TaskService taskService;
 
-    private Task sampleTaskWithAllFields;
+    private Task sampleTask;
     private TaskDto sampleDto;
     private CreateTaskDto sampleCreateDto;
 
     @BeforeEach
     void setUp() {
-        sampleTaskWithAllFields = new Task(1L, "desc", StatusEnum.TO_DO, "title", LocalDate.of(2025, 10, 10), LocalDate.now());
-        sampleDto = TaskDto.fromEntity(sampleTaskWithAllFields);
-        sampleCreateDto = CreateTaskDto.fromEntity(sampleTaskWithAllFields);
+        sampleTask = new Task(1L, "desc", StatusEnum.TO_DO, "title", LocalDate.of(2025, 10, 10), LocalDate.now());
+        sampleDto = TaskDto.fromEntity(sampleTask);
+        sampleCreateDto = CreateTaskDto.fromEntity(sampleTask);
     }
 
     @Test
     void testCreateTask() {
-        when(taskRepository.save(any(Task.class))).thenReturn(sampleTaskWithAllFields);
+        when(taskRepository.save(any(Task.class))).thenReturn(sampleTask);
 
         TaskDto result = taskService.createTask(sampleCreateDto);
 
@@ -63,63 +63,105 @@ class TaskServiceTest {
 
     @Test
     void testUpdateTask() {
-        sampleTaskWithAllFields = new Task(1L, "new description", StatusEnum.DONE, "new title", LocalDate.of(2025, 11, 10), LocalDate.now());
-        sampleDto = TaskDto.fromEntity(sampleTaskWithAllFields);
-        when(taskRepository.save(any(Task.class))).thenReturn(sampleTaskWithAllFields);
+        sampleTask = new Task(1L, "new description", StatusEnum.DONE, "new title", LocalDate.of(2025, 11, 10), LocalDate.now());
+        sampleDto = TaskDto.fromEntity(sampleTask);
+        when(taskRepository.save(any(Task.class))).thenReturn(sampleTask);
 
         TaskDto updated = taskService.updateTask(sampleDto);
 
         assertNotNull(updated);
-        assertEquals(sampleTaskWithAllFields.getId(), updated.getId());
-        assertEquals(sampleTaskWithAllFields.getTitle(), updated.getTitle());
+        assertEquals(sampleTask.getId(), updated.getId());
+        assertEquals(sampleTask.getTitle(), updated.getTitle());
 
         verify(taskRepository, times(1)).save(any(Task.class));
     }
 
     @Test
-    void testGetTaskById() {
-        when(taskRepository.save(any(Task.class))).thenReturn(sampleTaskWithAllFields);
+    void testGetTasksByStatus() {
+        StatusEnum status = StatusEnum.TO_DO;
 
-        TaskDto result = taskService.getTaskById(sampleDto.getId());
+        Task task1 = new Task(1L, "desc1", StatusEnum.TO_DO, "title1", LocalDate.of(2025, 10, 10), LocalDate.now());
+        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2", LocalDate.of(2025, 10, 15), LocalDate.now());
+        List<Task> tasks = List.of(task1, task2);
 
-        assertNotNull(result);
-        assertEquals(sampleTaskWithAllFields.getId(), result.getId());
-        assertEquals(sampleTaskWithAllFields.getTitle(), result.getTitle());
-        verify(taskRepository, times(1)).save(any(Task.class));
+        when(taskRepository.findByStatus(status)).thenReturn(tasks);
+
+        List<TaskDto> result = taskService.getTasksByStatus(status);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(t -> t.getStatus() == status));
+        verify(taskRepository, times(1)).findByStatus(eq(status));
     }
 
 
+    @Test
+    void testGetTasksSortedByDueDate() {
+        Task task1 = new Task(1L, "desc1", StatusEnum.TO_DO, "title1",
+                LocalDate.of(2025, 10, 10), LocalDate.now());
+        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2",
+                LocalDate.of(2025, 10, 15), LocalDate.now());
 
+        when(taskRepository.findAll(Sort.by("dueDate"))).thenReturn(List.of(task1, task2));
 
- /*   @Test
-    void testFindTasksWithStatus() {
-        List<Task> tasks = List.of(task);
-        Sort sort = Sort.by("dueDate");
+        List<TaskDto> result = taskService.getTasks("dueDate", null);
 
-        when(taskRepository.findByStatus(StatusEnum.TO_DO, sort)).thenReturn(tasks);
+        assertEquals(2, result.size());
+        assertEquals(LocalDate.of(2025, 10, 10), result.get(0).getDueDate());
+        assertEquals(LocalDate.of(2025, 10, 15), result.get(1).getDueDate());
 
-        List<TaskDto> result = taskService.findTasks("dueDate", StatusEnum.TO_DO);
+        verify(taskRepository, times(1)).findAll(Sort.by("dueDate"));
+    }
 
-        assertEquals(1, result.size());
-        assertEquals(task.getTitle(), result.get(0).getTitle());
+    @Test
+    void testGetTasksSortedByStatus() {
+        Task task1 = new Task(1L, "desc1", StatusEnum.DONE, "title1",
+                LocalDate.of(2025, 10, 10), LocalDate.now());
+        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2",
+                LocalDate.of(2025, 10, 15), LocalDate.now());
 
-        verify(taskRepository, times(1)).findByStatus(StatusEnum.TO_DO, sort);
-    }*/
+        when(taskRepository.findAll(Sort.by("status"))).thenReturn(List.of(task1, task2));
 
-//    @Test
-//    void testFindTasksWithoutStatus() {
-//        List<Task> tasks = List.of(task);
-//        Sort sort = Sort.by("dueDate");
-//
-//        when(taskRepository.findAll(sort)).thenReturn(tasks);
-//
-//        List<TaskDto> result = taskService.findTasks("dueDate", null);
-//
-//        assertEquals(1, result.size());
-//        assertEquals(task.getTitle(), result.get(0).getTitle());
-//
-//        verify(taskRepository, times(1)).findAll(sort);
-//    }
+        List<TaskDto> result = taskService.getTasks("status", null);
 
+        assertEquals(2, result.size());
+        assertEquals(StatusEnum.DONE, result.get(0).getStatus());
+        assertEquals(StatusEnum.TO_DO, result.get(1).getStatus());
+
+        verify(taskRepository, times(1)).findAll(Sort.by("status"));
+    }
+
+    @Test
+    void testGetTasksFilteredByStatusAndSorted() {
+        StatusEnum status = StatusEnum.TO_DO;
+
+        Task task1 = new Task(1L, "desc1", status, "title1",
+                LocalDate.of(2025, 10, 10), LocalDate.now());
+        Task task2 = new Task(2L, "desc2", status, "title2",
+                LocalDate.of(2025, 10, 20), LocalDate.now());
+
+        when(taskRepository.findByStatus(eq(status), eq(Sort.by("dueDate"))))
+                .thenReturn(List.of(task1, task2));
+
+        List<TaskDto> result = taskService.getTasks("dueDate", status);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(t -> t.getStatus() == status));
+        verify(taskRepository, times(1)).findByStatus(eq(status), eq(Sort.by("dueDate")));
+    }
+
+    @Test
+    void testGetTasksWithNullSortUsesDefaultDueDate() {
+        Task task1 = new Task(1L, "desc1", StatusEnum.TO_DO, "title1",
+                LocalDate.of(2025, 10, 10), LocalDate.now());
+        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2",
+                LocalDate.of(2025, 10, 15), LocalDate.now());
+
+        when(taskRepository.findAll(Sort.by("dueDate"))).thenReturn(List.of(task1, task2));
+
+        List<TaskDto> result = taskService.getTasks(null, null);
+
+        assertEquals(2, result.size());
+        verify(taskRepository, times(1)).findAll(Sort.by("dueDate"));
+    }
 
 }

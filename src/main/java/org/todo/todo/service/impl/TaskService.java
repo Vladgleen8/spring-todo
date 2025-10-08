@@ -3,6 +3,7 @@ package org.todo.todo.service.impl;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.todo.todo.dto.CreateTaskDto;
 import org.todo.todo.dto.TaskDto;
 import org.todo.todo.model.Task;
@@ -35,7 +36,7 @@ public class TaskService implements org.todo.todo.service.TaskService {
                 .toList();
     }
 
-
+    @Transactional
     @Override
     public TaskDto createTask(CreateTaskDto taskDto) {
         Task task = Task.builder()
@@ -49,6 +50,7 @@ public class TaskService implements org.todo.todo.service.TaskService {
         return TaskDto.fromEntity(savedTask);
     }
 
+    @Transactional
     @Override
     public TaskDto updateTask(TaskDto taskDto) {
 
@@ -64,6 +66,7 @@ public class TaskService implements org.todo.todo.service.TaskService {
         return  TaskDto.fromEntity(updatedTask);
     }
 
+    @Transactional
     @Override
     public void deleteTask(Long id) {
         taskRepository.deleteById(id);
