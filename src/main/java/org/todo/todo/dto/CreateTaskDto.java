@@ -1,12 +1,17 @@
 package org.todo.todo.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.todo.todo.model.Task;
 import org.todo.todo.model.enums.StatusEnum;
 
 import java.time.LocalDate;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+
 public class CreateTaskDto {
     private String title;
     private String description;
