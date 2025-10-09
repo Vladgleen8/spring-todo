@@ -1,5 +1,6 @@
 package org.todo.todo.service.impl;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,6 @@ import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.repository.TaskRepository;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -21,20 +21,18 @@ public class TaskService implements org.todo.todo.service.TaskService {
 
     @Override
     public List<TaskDto> getTasks(String sortBy, StatusEnum status) {
-        Sort sort = Sort.by(sortBy != null ? sortBy : "dueDate");
+        Sort sort = Sort.by(sortBy);
 
-        List<Task> tasks;
+        List<Task> tasks = (status != null)
+                ? taskRepository.findByStatus(status, sort)
+                : taskRepository.findAll(sort);
 
-        if (status != null) {
-            tasks = taskRepository.findByStatus(status, sort);
-        } else {
-            tasks = taskRepository.findAll(sort);
-        }
 
         return tasks.stream()
                 .map(TaskDto::fromEntity)
                 .toList();
     }
+
 
     @Transactional
     @Override
@@ -72,15 +70,13 @@ public class TaskService implements org.todo.todo.service.TaskService {
         taskRepository.deleteById(id);
     }
 
-    @Override
-    public List<TaskDto> getTasksByStatus(StatusEnum status) {
-        List<Task> tasksByStatus = taskRepository.findByStatus(status);
-        return tasksByStatus.stream().map(TaskDto::fromEntity).collect(Collectors.toList());
-    }
+
 
     @Override
     public TaskDto getTaskById(Long id) {
-        return TaskDto.fromEntity(taskRepository.getTaskById(id));
+        return taskRepository.findById(id)
+                .map(TaskDto::fromEntity)
+                .orElseThrow(() -> new EntityNotFoundException("Task with id " + id + " not found"));
     }
 
 }

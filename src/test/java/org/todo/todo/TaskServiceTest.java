@@ -86,7 +86,7 @@ class TaskServiceTest {
 
         when(taskRepository.findByStatus(status)).thenReturn(tasks);
 
-        List<TaskDto> result = taskService.getTasksByStatus(status);
+        List<TaskDto> result = taskService.getTasks(null, status);
 
         assertEquals(2, result.size());
         assertTrue(result.stream().allMatch(t -> t.getStatus() == status));

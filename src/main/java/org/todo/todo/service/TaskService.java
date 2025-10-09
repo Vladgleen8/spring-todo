@@ -13,6 +13,5 @@ public interface TaskService {
     TaskDto updateTask(TaskDto taskDto);
     void deleteTask(Long id);
     List<TaskDto> getTasks(String sortBy, StatusEnum status);
-    List<TaskDto> getTasksByStatus(StatusEnum status);
     TaskDto getTaskById(Long id);
 }
