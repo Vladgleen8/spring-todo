@@ -6,7 +6,6 @@ import org.todo.todo.model.Task;
 import org.todo.todo.model.enums.StatusEnum;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
 

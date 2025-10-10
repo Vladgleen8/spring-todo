@@ -8,21 +8,11 @@ import java.time.LocalDate;
 
 @Data
 public class TaskDto {
-    private Long id; // теперь возвращаем id
+    private Long id;
     private String title;
     private String description;
     private LocalDate dueDate;
     private StatusEnum status;
-
-    public static TaskDto fromEntity(Task task) {
-        TaskDto dto = new TaskDto();
-        dto.setId(task.getId());
-        dto.setTitle(task.getTitle());
-        dto.setDescription(task.getDescription());
-        dto.setDueDate(task.getDueDate());
-        dto.setStatus(task.getStatus());
-        return dto;
-    }
 }
 
 

@@ -1,12 +1,12 @@
 package org.todo.todo.controller;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.todo.todo.dto.CreateTaskDto;
 import org.todo.todo.dto.TaskDto;
+import org.todo.todo.dto.UpdateTaskDto;
 import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.service.TaskService;
 
@@ -34,8 +34,8 @@ public class TaskController {
     }
 
     @PutMapping
-    public ResponseEntity<TaskDto> updateTask(@RequestBody @Valid TaskDto taskDto) {
-            TaskDto updated = service.updateTask(taskDto);
+    public ResponseEntity<TaskDto> updateTask(@RequestBody @Valid UpdateTaskDto updateTaskDto) {
+            TaskDto updated = service.updateTask(updateTaskDto);
             return ResponseEntity.ok(updated);
     }
 

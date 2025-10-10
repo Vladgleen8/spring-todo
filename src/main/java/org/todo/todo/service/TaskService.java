@@ -2,6 +2,7 @@ package org.todo.todo.service;
 
 import org.todo.todo.dto.CreateTaskDto;
 import org.todo.todo.dto.TaskDto;
+import org.todo.todo.dto.UpdateTaskDto;
 import org.todo.todo.model.enums.StatusEnum;
 
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.List;
 public interface TaskService {
 
     TaskDto createTask(CreateTaskDto task);
-    TaskDto updateTask(TaskDto taskDto);
+    TaskDto updateTask(UpdateTaskDto updateTaskDto);
     void deleteTask(Long id);
     List<TaskDto> getTasks(String sortBy, StatusEnum status);
     TaskDto getTaskById(Long id);

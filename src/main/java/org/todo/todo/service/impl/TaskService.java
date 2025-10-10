@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.todo.todo.dto.CreateTaskDto;
 import org.todo.todo.dto.TaskDto;
+import org.todo.todo.dto.UpdateTaskDto;
+import org.todo.todo.mapper.TaskMapper;
 import org.todo.todo.model.Task;
 import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.repository.TaskRepository;
@@ -18,6 +20,8 @@ import java.util.List;
 public class TaskService implements org.todo.todo.service.TaskService {
 
     private final TaskRepository taskRepository;
+    private final TaskMapper taskMapper;
+
 
     @Override
     public List<TaskDto> getTasks(String sortBy, StatusEnum status) {
@@ -28,40 +32,24 @@ public class TaskService implements org.todo.todo.service.TaskService {
                 : taskRepository.findAll(sort);
 
 
-        return tasks.stream()
-                .map(TaskDto::fromEntity)
-                .toList();
+        return taskMapper.toDtoList(tasks);
     }
-
 
     @Transactional
     @Override
     public TaskDto createTask(CreateTaskDto taskDto) {
-        Task task = Task.builder()
-                .title(taskDto.getTitle())
-                .description(taskDto.getDescription())
-                .dueDate(taskDto.getDueDate())
-                .status(taskDto.getStatus() != null ? taskDto.getStatus() : StatusEnum.TO_DO)
-                .build();
-
+        Task task = taskMapper.fromCreateDto(taskDto);
         Task savedTask = taskRepository.save(task);
-        return TaskDto.fromEntity(savedTask);
+        return taskMapper.toDto(savedTask);
     }
 
     @Transactional
     @Override
-    public TaskDto updateTask(TaskDto taskDto) {
-
-        Task task = Task.builder()
-                .id(taskDto.getId())
-                .title(taskDto.getTitle())
-                .description(taskDto.getDescription())
-                .dueDate(taskDto.getDueDate())
-                .status(taskDto.getStatus())
-                .build();
-
-        Task updatedTask = taskRepository.save(task);
-        return  TaskDto.fromEntity(updatedTask);
+    public TaskDto updateTask(UpdateTaskDto updateTaskDto) {
+        Task existingTaskEntity = getTaskEntityById(updateTaskDto.getId());
+        taskMapper.updateTaskFromDto(updateTaskDto, existingTaskEntity);
+        Task updated = taskRepository.save(existingTaskEntity);
+        return taskMapper.toDto(updated);
     }
 
     @Transactional
@@ -70,13 +58,14 @@ public class TaskService implements org.todo.todo.service.TaskService {
         taskRepository.deleteById(id);
     }
 
-
-
     @Override
     public TaskDto getTaskById(Long id) {
-        return taskRepository.findById(id)
-                .map(TaskDto::fromEntity)
-                .orElseThrow(() -> new EntityNotFoundException("Task with id " + id + " not found"));
+        Task task = getTaskEntityById(id);
+        return taskMapper.toDto(task);
     }
 
+    private Task getTaskEntityById(Long id) {
+        return taskRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Task with id " + id + " not found"));
+    }
 }
