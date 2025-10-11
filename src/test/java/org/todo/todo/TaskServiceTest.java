@@ -1,21 +1,28 @@
 package org.todo.todo;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.domain.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.todo.todo.dto.CreateTaskDto;
 import org.todo.todo.dto.TaskDto;
+import org.todo.todo.dto.UpdateTaskDto;
+import org.todo.todo.mapper.TaskMapper;
 import org.todo.todo.model.Task;
 import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.repository.TaskRepository;
 import org.todo.todo.service.impl.TaskService;
 
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -26,142 +33,197 @@ class TaskServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    @Mock
+    private TaskMapper taskMapper;
+
     @InjectMocks
     private TaskService taskService;
 
-    private Task sampleTask;
-    private TaskDto sampleDto;
-    private CreateTaskDto sampleCreateDto;
+    private Task task;
+    private TaskDto taskDto;
+    private CreateTaskDto createTaskDto;
+    private UpdateTaskDto updateTaskDto;
 
     @BeforeEach
     void setUp() {
-        sampleTask = new Task(1L, "desc", StatusEnum.TO_DO, "title", LocalDate.of(2025, 10, 10), LocalDate.now());
-        sampleDto = TaskDto.fromEntity(sampleTask);
-        sampleCreateDto = CreateTaskDto.fromEntity(sampleTask);
+        task = new Task(1L, "desc", StatusEnum.TO_DO, "title",
+                LocalDate.of(2025, 10, 10), LocalDate.now());
+
+        taskDto = new TaskDto(1L, "title", "desc",
+                LocalDate.of(2025, 10, 10), StatusEnum.TO_DO);
+
+        createTaskDto = new CreateTaskDto("title", "desc",
+                LocalDate.of(2025, 10, 10), StatusEnum.TO_DO);
+
+        updateTaskDto = new UpdateTaskDto(1L, "updated title", "updated desc",
+                LocalDate.of(2025, 12, 31), StatusEnum.IN_PROGRESS);
     }
+
 
     @Test
     void testCreateTask() {
-        when(taskRepository.save(any(Task.class))).thenReturn(sampleTask);
+        when(taskMapper.fromCreateDto(createTaskDto)).thenReturn(task);
+        when(taskRepository.save(task)).thenReturn(task);
+        when(taskMapper.toDto(task)).thenReturn(taskDto);
 
-        TaskDto result = taskService.createTask(sampleCreateDto);
+        TaskDto result = taskService.createTask(createTaskDto);
 
         assertNotNull(result);
-        assertEquals("title", result.getTitle());
-        assertEquals(1L, result.getId());
-        verify(taskRepository, times(1)).save(any(Task.class));
+        assertEquals(taskDto.getId(), result.getId());
+        verify(taskMapper).fromCreateDto(createTaskDto);
+        verify(taskRepository).save(task);
+        verify(taskMapper).toDto(task);
     }
 
     @Test
-    void testDeleteTask() {
-        doNothing().when(taskRepository).deleteById(sampleDto.getId());
+    void testGetTaskByIdFound() {
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskMapper.toDto(task)).thenReturn(taskDto);
 
-        taskService.deleteTask(sampleDto.getId());
+        TaskDto result = taskService.getTaskById(1L);
 
-        verify(taskRepository, times(1)).deleteById(sampleDto.getId());
+        assertEquals(taskDto, result);
+        verify(taskRepository).findById(1L);
+        verify(taskMapper).toDto(task);
+    }
+
+    @Test
+    void testGetTaskByIdNotFound() {
+        when(taskRepository.findById(77L)).thenReturn(Optional.empty());
+
+        EntityNotFoundException exception = assertThrows(
+                EntityNotFoundException.class,
+                () -> taskService.getTaskById(99L)
+        );
+
+        assertEquals("Task with id 77 not found", exception.getMessage());
+        verify(taskRepository).findById(77L);
     }
 
     @Test
     void testUpdateTask() {
-        sampleTask = new Task(1L, "new description", StatusEnum.DONE, "new title", LocalDate.of(2025, 11, 10), LocalDate.now());
-        sampleDto = TaskDto.fromEntity(sampleTask);
-        when(taskRepository.save(any(Task.class))).thenReturn(sampleTask);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        doAnswer(invocation -> {
+            // имитация обновления существующей сущности
+            Task target = invocation.getArgument(1);
+            target.setTitle(updateTaskDto.getTitle());
+            target.setDescription(updateTaskDto.getDescription());
+            target.setStatus(updateTaskDto.getStatus());
+            return null;
+        }).when(taskMapper).updateTaskFromDto(eq(updateTaskDto), any(Task.class));
 
-        TaskDto updated = taskService.updateTask(sampleDto);
+        when(taskRepository.save(task)).thenReturn(task);
+        when(taskMapper.toDto(task)).thenReturn(taskDto);
 
-        assertNotNull(updated);
-        assertEquals(sampleTask.getId(), updated.getId());
-        assertEquals(sampleTask.getTitle(), updated.getTitle());
+        TaskDto result = taskService.updateTask(updateTaskDto);
 
-        verify(taskRepository, times(1)).save(any(Task.class));
+        assertNotNull(result);
+        verify(taskRepository).findById(1L);
+        verify(taskRepository).save(task);
+        verify(taskMapper).updateTaskFromDto(eq(updateTaskDto), any(Task.class));
     }
 
     @Test
-    void testGetTasksByStatus() {
-        StatusEnum status = StatusEnum.TO_DO;
+    void updateTaskWhenTaskNotFoundThrowsException() {
+        UpdateTaskDto updateTaskDto = new UpdateTaskDto();
+        updateTaskDto.setId(999L);
 
-        Task task1 = new Task(1L, "desc1", StatusEnum.TO_DO, "title1", LocalDate.of(2025, 10, 10), LocalDate.now());
-        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2", LocalDate.of(2025, 10, 15), LocalDate.now());
-        List<Task> tasks = List.of(task1, task2);
+        when(taskRepository.findById(999L)).thenReturn(Optional.empty());
 
-        when(taskRepository.findByStatus(status)).thenReturn(tasks);
+        assertThrows(EntityNotFoundException.class, () -> taskService.updateTask(updateTaskDto));
 
-        List<TaskDto> result = taskService.getTasks(null, status);
+        verify(taskRepository).findById(999L);
+        verifyNoMoreInteractions(taskRepository, taskMapper);
+    }
 
-        assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(t -> t.getStatus() == status));
-        verify(taskRepository, times(1)).findByStatus(eq(status));
+    @Test
+    void updateTaskWhenMapperFailsThrowsException() {
+        UpdateTaskDto updateTaskDto = new UpdateTaskDto();
+        updateTaskDto.setId(1L);
+
+        Task existingTask = new Task();
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(existingTask));
+        doThrow(new RuntimeException("Mapping error")).when(taskMapper)
+                .updateTaskFromDto(updateTaskDto, existingTask);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> taskService.updateTask(updateTaskDto));
+
+        assertEquals("Mapping error", ex.getMessage());
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void updateTaskShouldBeTransactional() throws NoSuchMethodException {
+        Method method = TaskService.class.getMethod("updateTask", UpdateTaskDto.class);
+        assertTrue(method.isAnnotationPresent(Transactional.class));
     }
 
 
     @Test
-    void testGetTasksSortedByDueDate() {
-        Task task1 = new Task(1L, "desc1", StatusEnum.TO_DO, "title1",
-                LocalDate.of(2025, 10, 10), LocalDate.now());
-        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2",
-                LocalDate.of(2025, 10, 15), LocalDate.now());
-
-        when(taskRepository.findAll(Sort.by("dueDate"))).thenReturn(List.of(task1, task2));
-
-        List<TaskDto> result = taskService.getTasks("dueDate", null);
-
-        assertEquals(2, result.size());
-        assertEquals(LocalDate.of(2025, 10, 10), result.get(0).getDueDate());
-        assertEquals(LocalDate.of(2025, 10, 15), result.get(1).getDueDate());
-
-        verify(taskRepository, times(1)).findAll(Sort.by("dueDate"));
+    void testDeleteTask() {
+        doNothing().when(taskRepository).deleteById(1L);
+        taskService.deleteTask(1L);
+        verify(taskRepository, times(1)).deleteById(1L);
     }
 
     @Test
-    void testGetTasksSortedByStatus() {
-        Task task1 = new Task(1L, "desc1", StatusEnum.DONE, "title1",
-                LocalDate.of(2025, 10, 10), LocalDate.now());
-        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2",
-                LocalDate.of(2025, 10, 15), LocalDate.now());
-
-        when(taskRepository.findAll(Sort.by("status"))).thenReturn(List.of(task1, task2));
-
-        List<TaskDto> result = taskService.getTasks("status", null);
-
-        assertEquals(2, result.size());
-        assertEquals(StatusEnum.DONE, result.get(0).getStatus());
-        assertEquals(StatusEnum.TO_DO, result.get(1).getStatus());
-
-        verify(taskRepository, times(1)).findAll(Sort.by("status"));
+    void deleteTaskWhenTaskNotFoundThrowsException() {
+        Long id = 999L;
+        doThrow(new EmptyResultDataAccessException(1)).when(taskRepository).deleteById(id);
+        assertThrows(EmptyResultDataAccessException.class, () -> taskService.deleteTask(id));
+        verify(taskRepository).deleteById(id);
     }
 
     @Test
-    void testGetTasksFilteredByStatusAndSorted() {
-        StatusEnum status = StatusEnum.TO_DO;
+    void deleteTask_shouldBeTransactional() throws NoSuchMethodException {
+        Method method = TaskService.class.getMethod("deleteTask", Long.class);
+        assertTrue(method.isAnnotationPresent(Transactional.class));
+    }
 
-        Task task1 = new Task(1L, "desc1", status, "title1",
-                LocalDate.of(2025, 10, 10), LocalDate.now());
-        Task task2 = new Task(2L, "desc2", status, "title2",
-                LocalDate.of(2025, 10, 20), LocalDate.now());
 
-        when(taskRepository.findByStatus(eq(status), eq(Sort.by("dueDate"))))
-                .thenReturn(List.of(task1, task2));
+    @Test
+    void getTasksWithStatusReturnsPagedResult() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdOn"));
+        Page<Task> taskPage = new PageImpl<>(List.of(task));
 
-        List<TaskDto> result = taskService.getTasks("dueDate", status);
+        when(taskRepository.findByStatus(StatusEnum.TO_DO, pageable)).thenReturn(taskPage);
+        when(taskMapper.toDto(task)).thenReturn(taskDto);
 
-        assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(t -> t.getStatus() == status));
-        verify(taskRepository, times(1)).findByStatus(eq(status), eq(Sort.by("dueDate")));
+        Page<TaskDto> result = taskService.getTasks(0, 10, "createdOn", StatusEnum.TO_DO);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Test Task", result.getContent().getFirst().getTitle());
+        verify(taskRepository).findByStatus(StatusEnum.TO_DO, pageable);
     }
 
     @Test
-    void testGetTasksWithNullSortUsesDefaultDueDate() {
-        Task task1 = new Task(1L, "desc1", StatusEnum.TO_DO, "title1",
-                LocalDate.of(2025, 10, 10), LocalDate.now());
-        Task task2 = new Task(2L, "desc2", StatusEnum.TO_DO, "title2",
-                LocalDate.of(2025, 10, 15), LocalDate.now());
+    void getTasksWithoutStatusReturnsPagedResult() {
+        Pageable pageable = PageRequest.of(0, 5, Sort.by("title"));
+        Page<Task> taskPage = new PageImpl<>(List.of(task));
 
-        when(taskRepository.findAll(Sort.by("dueDate"))).thenReturn(List.of(task1, task2));
+        when(taskRepository.findAll(pageable)).thenReturn(taskPage);
+        when(taskMapper.toDto(task)).thenReturn(taskDto);
 
-        List<TaskDto> result = taskService.getTasks(null, null);
+        Page<TaskDto> result = taskService.getTasks(0, 5, "title", null);
 
-        assertEquals(2, result.size());
-        verify(taskRepository, times(1)).findAll(Sort.by("dueDate"));
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Test Task", result.getContent().getFirst().getTitle());
+        verify(taskRepository).findAll(pageable);
     }
 
+    @Test
+    void getTasksWithInvalidSortFieldThrowsException() {
+        String invalidSortBy = "unknownField";
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(invalidSortBy));
+
+        when(taskRepository.findAll(pageable))
+                .thenThrow(new IllegalArgumentException("Invalid sort property: " + invalidSortBy));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                taskService.getTasks(0, 10, invalidSortBy, null)
+        );
+
+        verify(taskRepository).findAll(pageable);
+    }
 }

@@ -2,6 +2,9 @@ package org.todo.todo.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,8 +16,6 @@ import org.todo.todo.model.Task;
 import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.repository.TaskRepository;
 
-import java.util.List;
-
 @Service
 @AllArgsConstructor
 public class TaskService implements org.todo.todo.service.TaskService {
@@ -22,18 +23,17 @@ public class TaskService implements org.todo.todo.service.TaskService {
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
 
-
     @Override
-    public List<TaskDto> getTasks(String sortBy, StatusEnum status) {
-        Sort sort = Sort.by(sortBy);
+    public Page<TaskDto> getTasks(int page, int size, String sortBy, StatusEnum status) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
 
-        List<Task> tasks = (status != null)
-                ? taskRepository.findByStatus(status, sort)
-                : taskRepository.findAll(sort);
+        Page<Task> tasks = (status != null)
+                ? taskRepository.findByStatus(status, pageable)
+                : taskRepository.findAll(pageable);
 
-
-        return taskMapper.toDtoList(tasks);
+        return tasks.map(taskMapper::toDto);
     }
+
 
     @Transactional
     @Override

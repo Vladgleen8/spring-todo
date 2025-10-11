@@ -2,6 +2,7 @@ package org.todo.todo.controller;
 
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.todo.todo.dto.CreateTaskDto;
@@ -11,7 +12,6 @@ import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.service.TaskService;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/tasks")
@@ -46,11 +46,16 @@ public class TaskController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskDto>> getTasks(@RequestParam(required = false, defaultValue = "createdOn") String sortBy,
-                                        @RequestParam(required = false ) StatusEnum status) {
-        List<TaskDto> tasks = service.getTasks(sortBy, status);
-        return ResponseEntity.ok(tasks);
+    public ResponseEntity<Page<TaskDto>> getTasks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdOn") String sortBy,
+            @RequestParam(required = false) StatusEnum status
+    ) {
+        Page<TaskDto> result = service.getTasks(page, size, sortBy, status);
+        return ResponseEntity.ok(result);
     }
+
 
 
 
