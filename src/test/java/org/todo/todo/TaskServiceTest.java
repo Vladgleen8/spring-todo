@@ -17,7 +17,7 @@ import org.todo.todo.mapper.TaskMapper;
 import org.todo.todo.model.Task;
 import org.todo.todo.model.enums.StatusEnum;
 import org.todo.todo.repository.TaskRepository;
-import org.todo.todo.service.impl.TaskService;
+import org.todo.todo.service.impl.TaskServiceImpl;
 
 import java.lang.reflect.Method;
 import java.time.LocalDate;
@@ -37,7 +37,7 @@ class TaskServiceTest {
     private TaskMapper taskMapper;
 
     @InjectMocks
-    private TaskService taskService;
+    private TaskServiceImpl taskService;
 
     private Task task;
     private TaskDto taskDto;
@@ -55,7 +55,7 @@ class TaskServiceTest {
         createTaskDto = new CreateTaskDto("title", "desc",
                 LocalDate.of(2025, 10, 10), StatusEnum.TO_DO);
 
-        updateTaskDto = new UpdateTaskDto(1L, "updated title", "updated desc",
+        updateTaskDto = new UpdateTaskDto("updated title", "updated desc",
                 LocalDate.of(2025, 12, 31), StatusEnum.IN_PROGRESS);
     }
 
@@ -93,7 +93,7 @@ class TaskServiceTest {
 
         EntityNotFoundException exception = assertThrows(
                 EntityNotFoundException.class,
-                () -> taskService.getTaskById(99L)
+                () -> taskService.getTaskById(77L)
         );
 
         assertEquals("Task with id 77 not found", exception.getMessage());
@@ -102,52 +102,52 @@ class TaskServiceTest {
 
     @Test
     void testUpdateTask() {
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        Long taskId = 1L;
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
         doAnswer(invocation -> {
-            // имитация обновления существующей сущности
+            UpdateTaskDto dto = invocation.getArgument(0);
             Task target = invocation.getArgument(1);
-            target.setTitle(updateTaskDto.getTitle());
-            target.setDescription(updateTaskDto.getDescription());
-            target.setStatus(updateTaskDto.getStatus());
+            target.setTitle(dto.getTitle());
+            target.setDescription(dto.getDescription());
+            target.setStatus(dto.getStatus());
             return null;
         }).when(taskMapper).updateTaskFromDto(eq(updateTaskDto), any(Task.class));
 
         when(taskRepository.save(task)).thenReturn(task);
         when(taskMapper.toDto(task)).thenReturn(taskDto);
 
-        TaskDto result = taskService.updateTask(updateTaskDto);
+        TaskDto result = taskService.updateTask(taskId, updateTaskDto);
 
         assertNotNull(result);
-        verify(taskRepository).findById(1L);
-        verify(taskRepository).save(task);
+        verify(taskRepository).findById(taskId);
         verify(taskMapper).updateTaskFromDto(eq(updateTaskDto), any(Task.class));
+        verify(taskRepository).save(task);
     }
 
     @Test
     void updateTaskWhenTaskNotFoundThrowsException() {
-        UpdateTaskDto updateTaskDto = new UpdateTaskDto();
-        updateTaskDto.setId(999L);
+        Long missingId = 999L;
+        when(taskRepository.findById(missingId)).thenReturn(Optional.empty());
 
-        when(taskRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(EntityNotFoundException.class,
+                () -> taskService.updateTask(missingId, updateTaskDto));
 
-        assertThrows(EntityNotFoundException.class, () -> taskService.updateTask(updateTaskDto));
-
-        verify(taskRepository).findById(999L);
+        verify(taskRepository).findById(missingId);
         verifyNoMoreInteractions(taskRepository, taskMapper);
     }
 
     @Test
     void updateTaskWhenMapperFailsThrowsException() {
-        UpdateTaskDto updateTaskDto = new UpdateTaskDto();
-        updateTaskDto.setId(1L);
-
+        Long id = 1L;
         Task existingTask = new Task();
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(existingTask));
-        doThrow(new RuntimeException("Mapping error")).when(taskMapper)
-                .updateTaskFromDto(updateTaskDto, existingTask);
+        when(taskRepository.findById(id)).thenReturn(Optional.of(existingTask));
+
+        doThrow(new RuntimeException("Mapping error"))
+                .when(taskMapper).updateTaskFromDto(updateTaskDto, existingTask);
 
         RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> taskService.updateTask(updateTaskDto));
+                () -> taskService.updateTask(id, updateTaskDto));
 
         assertEquals("Mapping error", ex.getMessage());
         verify(taskRepository, never()).save(any());
@@ -155,9 +155,10 @@ class TaskServiceTest {
 
     @Test
     void updateTaskShouldBeTransactional() throws NoSuchMethodException {
-        Method method = TaskService.class.getMethod("updateTask", UpdateTaskDto.class);
+        Method method = TaskServiceImpl.class.getMethod("updateTask", Long.class, UpdateTaskDto.class);
         assertTrue(method.isAnnotationPresent(Transactional.class));
     }
+
 
 
     @Test
@@ -177,7 +178,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_shouldBeTransactional() throws NoSuchMethodException {
-        Method method = TaskService.class.getMethod("deleteTask", Long.class);
+        Method method = TaskServiceImpl.class.getMethod("deleteTask", Long.class);
         assertTrue(method.isAnnotationPresent(Transactional.class));
     }
 
@@ -193,7 +194,7 @@ class TaskServiceTest {
         Page<TaskDto> result = taskService.getTasks(0, 10, "createdOn", StatusEnum.TO_DO);
 
         assertEquals(1, result.getTotalElements());
-        assertEquals("Test Task", result.getContent().getFirst().getTitle());
+        assertEquals("title", result.getContent().getFirst().getTitle());
         verify(taskRepository).findByStatus(StatusEnum.TO_DO, pageable);
     }
 
@@ -208,7 +209,7 @@ class TaskServiceTest {
         Page<TaskDto> result = taskService.getTasks(0, 5, "title", null);
 
         assertEquals(1, result.getTotalElements());
-        assertEquals("Test Task", result.getContent().getFirst().getTitle());
+        assertEquals("title", result.getContent().getFirst().getTitle());
         verify(taskRepository).findAll(pageable);
     }
 

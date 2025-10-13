@@ -18,7 +18,7 @@ import org.todo.todo.repository.TaskRepository;
 
 @Service
 @AllArgsConstructor
-public class TaskService implements org.todo.todo.service.TaskService {
+public class TaskServiceImpl implements org.todo.todo.service.TaskService {
 
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
@@ -45,12 +45,13 @@ public class TaskService implements org.todo.todo.service.TaskService {
 
     @Transactional
     @Override
-    public TaskDto updateTask(UpdateTaskDto updateTaskDto) {
-        Task existingTaskEntity = getTaskEntityById(updateTaskDto.getId());
+    public TaskDto updateTask(Long id, UpdateTaskDto updateTaskDto) {
+        Task existingTaskEntity = getTaskEntityById(id);
         taskMapper.updateTaskFromDto(updateTaskDto, existingTaskEntity);
         Task updated = taskRepository.save(existingTaskEntity);
         return taskMapper.toDto(updated);
     }
+
 
     @Transactional
     @Override

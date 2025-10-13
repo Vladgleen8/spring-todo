@@ -8,8 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import org.todo.todo.dto.CreateTaskDto;
 import org.todo.todo.dto.TaskDto;
 import org.todo.todo.dto.UpdateTaskDto;
+import org.todo.todo.model.enums.SortField;
 import org.todo.todo.model.enums.StatusEnum;
-import org.todo.todo.service.TaskService;
+import org.todo.todo.service.impl.TaskServiceImpl;
 
 import java.net.URI;
 
@@ -18,9 +19,9 @@ import java.net.URI;
 @AllArgsConstructor
 public class TaskController {
 
-    private TaskService service;
+    private TaskServiceImpl service;
 
-    @PostMapping()
+    @PostMapping
     public ResponseEntity<TaskDto> createTask(@RequestBody @Valid CreateTaskDto taskDto) {
         TaskDto created = service.createTask(taskDto);
         URI location = URI.create("/api/v1/tasks/" + created.getId());
@@ -33,9 +34,10 @@ public class TaskController {
             return ResponseEntity.ok(task);
     }
 
-    @PutMapping
-    public ResponseEntity<TaskDto> updateTask(@RequestBody @Valid UpdateTaskDto updateTaskDto) {
-            TaskDto updated = service.updateTask(updateTaskDto);
+    @PutMapping("/{id}")
+    public ResponseEntity<TaskDto> updateTask( @PathVariable Long id,
+                                               @RequestBody @Valid UpdateTaskDto updateTaskDto) {
+            TaskDto updated = service.updateTask(id, updateTaskDto);
             return ResponseEntity.ok(updated);
     }
 
@@ -49,16 +51,11 @@ public class TaskController {
     public ResponseEntity<Page<TaskDto>> getTasks(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdOn") String sortBy,
+            @RequestParam(defaultValue = "createdOn") SortField sortBy,
             @RequestParam(required = false) StatusEnum status
     ) {
-        Page<TaskDto> result = service.getTasks(page, size, sortBy, status);
+        Page<TaskDto> result = service.getTasks(page, size, sortBy.name(), status);
         return ResponseEntity.ok(result);
     }
-
-
-
-
-
 
 }

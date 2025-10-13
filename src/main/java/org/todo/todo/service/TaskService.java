@@ -9,7 +9,7 @@ import org.todo.todo.model.enums.StatusEnum;
 public interface TaskService {
 
     TaskDto createTask(CreateTaskDto task);
-    TaskDto updateTask(UpdateTaskDto updateTaskDto);
+    TaskDto updateTask(Long id, UpdateTaskDto dto);
     void deleteTask(Long id);
     Page<TaskDto> getTasks(int page, int size, String sortBy, StatusEnum status);
     TaskDto getTaskById(Long id);
